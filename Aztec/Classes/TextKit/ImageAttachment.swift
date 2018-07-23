@@ -6,13 +6,9 @@ import UIKit
 ///
 open class ImageAttachment: MediaAttachment {
 
-    /// Attachment Link URL
-    ///
-    open var linkURL: URL?
-
     /// Attachment Alignment
     ///
-    open var alignment: Alignment = .center {
+    open var alignment: Alignment? {
         willSet {
             if newValue != alignment {
                 glyphImage = nil
@@ -59,8 +55,6 @@ open class ImageAttachment: MediaAttachment {
                 self.size = size
             }
         }
-
-        linkURL = aDecoder.decodeObject(forKey: EncodeKeys.linkURL.rawValue) as? URL
     }
 
     /// Required Initializer
@@ -74,26 +68,26 @@ open class ImageAttachment: MediaAttachment {
 
     override open func encode(with aCoder: NSCoder) {
         super.encode(with: aCoder)
-        aCoder.encode(alignment.rawValue, forKey: EncodeKeys.alignment.rawValue)
-        aCoder.encode(size.rawValue, forKey: EncodeKeys.size.rawValue)
-        if let linkURL = self.linkURL {
-            aCoder.encode(linkURL, forKey: EncodeKeys.linkURL.rawValue)
+        if let alignmentValue = alignment?.rawValue {
+            aCoder.encode(alignmentValue, forKey: EncodeKeys.alignment.rawValue)
         }
+        aCoder.encode(size.rawValue, forKey: EncodeKeys.size.rawValue)
     }
 
-    fileprivate enum EncodeKeys: String {
+    private enum EncodeKeys: String {
         case alignment
         case size
-        case linkURL
+        case caption
     }
 
+    // MARK: - Image Metrics
 
-    // MARK: - Origin calculation
-
-    override func xPosition(forContainerWidth containerWidth: CGFloat) -> CGFloat {
-        let imageWidth = onScreenWidth(containerWidth)
-
-        switch (alignment) {
+    /// Returns the x position for the image, for the specified container width.
+    ///
+    override func imagePositionX(for containerWidth: CGFloat) -> CGFloat {
+        let imageWidth = onScreenWidth(for: containerWidth)
+        let alignmentValue = alignment ?? .none
+        switch alignmentValue {
         case .center:
             return CGFloat(floor((containerWidth - imageWidth) / 2))
         case .right:
@@ -103,27 +97,18 @@ open class ImageAttachment: MediaAttachment {
         }
     }
 
-    override func onScreenHeight(_ containerWidth: CGFloat) -> CGFloat {
-        if let image = image {
-            let targetWidth = onScreenWidth(containerWidth)
-            let scale = targetWidth / image.size.width
-
-            return floor(image.size.height * scale) + (appearance.imageMargin * 2)
-        } else {
+    /// Returns the Image Width, for the specified container width.
+    ///
+    override func imageWidth(for containerWidth: CGFloat) -> CGFloat {
+        guard let image = image else {
             return 0
         }
-    }
 
-    override func onScreenWidth(_ containerWidth: CGFloat) -> CGFloat {
-        if let image = image {
-            switch (size) {	
-            case .full, .none:
-                return floor(min(image.size.width, containerWidth))
-            default:
-                return floor(min(min(image.size.width,size.width), containerWidth))
-            }
-        } else {
-            return 0
+        switch size {
+        case .full, .none:
+            return floor(min(image.size.width, containerWidth))
+        default:
+            return floor(min(min(image.size.width,size.width), containerWidth))
         }
     }
 }
@@ -140,7 +125,6 @@ extension ImageAttachment {
 
         clone.size = size
         clone.alignment = alignment
-        clone.linkURL = linkURL
 
         return clone
     }
@@ -172,14 +156,27 @@ extension ImageAttachment {
             }
         }
 
-        static let mappedValues:[String:Alignment] = [
+        func textAlignment() -> NSTextAlignment {
+            switch self {
+            case .center:
+                return .center
+            case .left:
+                return .left
+            case .right:
+                return .right
+            case .none:
+                return .natural
+            }
+        }
+
+        private static let mappedValues:[String: Alignment] = [
             Alignment.none.htmlString():.none,
             Alignment.left.htmlString():.left,
             Alignment.center.htmlString():.center,
             Alignment.right.htmlString():.right
         ]
 
-        static func fromHTML(string value:String) -> Alignment? {
+        public static func fromHTML(string value: String) -> Alignment? {
             return mappedValues[value]
         }
     }
@@ -192,6 +189,10 @@ extension ImageAttachment {
         case large
         case full
         case none
+
+        var shouldResizeAsset: Bool {
+            return width != Settings.maximum
+        }
 
         func htmlString() -> String {
             switch self {
@@ -208,7 +209,7 @@ extension ImageAttachment {
             }
         }
 
-        static let mappedValues:[String:Size] = [
+        private static let mappedValues: [String: Size] = [
             Size.thumbnail.htmlString():.thumbnail,
             Size.medium.htmlString():.medium,
             Size.large.htmlString():.large,
@@ -216,7 +217,7 @@ extension ImageAttachment {
             Size.none.htmlString():.none
         ]
 
-        static func fromHTML(string value:String) -> Size? {
+        public static func fromHTML(string value: String) -> Size? {
             return mappedValues[value]
         }
 

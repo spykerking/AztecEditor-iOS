@@ -8,14 +8,25 @@ class AttachmentDetailsViewController: UITableViewController
     @IBOutlet var sizeSegmentedControl: UISegmentedControl!
     @IBOutlet var sourceURLTextField: UITextField!
     @IBOutlet var linkURLTextField: UITextField!
+    @IBOutlet var captionTextView: UITextView!
     @IBOutlet var altTextField: UITextField!
 
     var attachment: ImageAttachment?
-    var onUpdate: ((_ alignment: ImageAttachment.Alignment, _ size: ImageAttachment.Size, _ imageURL: URL, _ linkURL: URL?, _ altText: String?) -> Void)?
+    var caption: NSAttributedString?
+    var linkURL: URL?
+    var onUpdate: ((_ alignment: ImageAttachment.Alignment?, _ size: ImageAttachment.Size, _ imageURL: URL, _ linkURL: URL?, _ altText: String?, _ captionText: NSAttributedString?) -> Void)?
+    var onDismiss: (() -> ())?
 
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        if let caption = caption {
+            captionTextView.attributedText = caption
+        }
+        
+        captionTextView.delegate = self
+        
         title = NSLocalizedString("Properties", comment: "Attachment Properties Title")
         edgesForExtendedLayout = UIRectEdge()
 
@@ -37,16 +48,20 @@ class AttachmentDetailsViewController: UITableViewController
             fatalError()
         }
 
-        let alignment = Alignment(attachmentAlignment: attachment.alignment)
-        let size = Size(attachmentSize: attachment.size)
+        alignmentSegmentedControl.selectedSegmentIndex = UISegmentedControlNoSegment
+        if let alignmentValue = attachment.alignment {
+            let alignment = Alignment(attachmentAlignment: alignmentValue)
+            alignmentSegmentedControl.selectedSegmentIndex = alignment.rawValue
+        }
 
-        alignmentSegmentedControl.selectedSegmentIndex = alignment.rawValue
+        let size = Size(attachmentSize: attachment.size)
         sizeSegmentedControl.selectedSegmentIndex = size.rawValue
 
         sourceURLTextField.text = attachment.url?.absoluteString
 
-        linkURLTextField.text = attachment.linkURL?.absoluteString
+        linkURLTextField.text = linkURL?.absoluteString
 
+        captionTextView.attributedText = caption
         altTextField.text = attachment.extraAttributes["alt"]
     }
 
@@ -55,8 +70,11 @@ class AttachmentDetailsViewController: UITableViewController
     }
 
     @IBAction func doneWasPressed() {
+        var alignment: ImageAttachment.Alignment?
+        if alignmentSegmentedControl.selectedSegmentIndex != UISegmentedControlNoSegment {
+            alignment = Alignment(rawValue: alignmentSegmentedControl.selectedSegmentIndex)?.toAttachmentAlignment()
+        }
         guard
-            let alignment = Alignment(rawValue: alignmentSegmentedControl.selectedSegmentIndex),
             let size = Size(rawValue: sizeSegmentedControl.selectedSegmentIndex)
             else {
             fatalError()
@@ -70,23 +88,44 @@ class AttachmentDetailsViewController: UITableViewController
             return
         }
         let alt = altTextField.text
+        let caption = captionTextView.attributedText
         let linkURL = URL(string: linkURLTextField.text ?? "")
-        onUpdate(alignment.toAttachmentAlignment(), size.toAttachmentSize(), url, linkURL, alt)
-        dismiss(animated: true, completion: nil)
+        onUpdate(alignment, size.toAttachmentSize(), url, linkURL, alt, caption)
+        dismiss(animated: true, completion: onDismiss)
     }
 
-    class func controller() -> AttachmentDetailsViewController {
+    class func controller(for attachment: ImageAttachment, with caption: NSAttributedString?) -> AttachmentDetailsViewController {
         let storyboard = UIStoryboard(name: "AttachmentDetailsViewController", bundle: nil)
-        return storyboard.instantiateViewController(withIdentifier: "AttachmentDetailsViewController") as! AttachmentDetailsViewController
+        let viewController = storyboard.instantiateViewController(withIdentifier: "AttachmentDetailsViewController") as! AttachmentDetailsViewController
+        
+        viewController.attachment = attachment
+        viewController.caption = caption
+        
+        return viewController
     }
+}
 
+extension AttachmentDetailsViewController: UITextViewDelegate {
+    
+    /// Delegate override because we don't allow paragraph breaking characters in captions
+    ///
+    func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
+        let containsBreakingCharacters = text.contains(where: { (character) -> Bool in
+            guard let characterName = Character.Name(rawValue: character) else {
+                return false
+            }
+            
+            return Character.paragraphBreakingCharacters.contains(characterName)
+        })
+        
+        return !containsBreakingCharacters
+    }
 }
 
 
 /// Private Helpers
 ///
-private extension AttachmentDetailsViewController
-{
+private extension AttachmentDetailsViewController {
     /// Aliases
     ///
     typealias AttachmentAlignment = ImageAttachment.Alignment

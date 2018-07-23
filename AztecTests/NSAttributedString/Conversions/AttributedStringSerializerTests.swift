@@ -9,15 +9,15 @@ class AttributedStringSerializerTests: XCTestCase {
     func testMultipleSpanNodesAreProperlyPreservedWithinUnsupportedHtmlAttribute() {
         let textNode = TextNode(text: "Ehlo World!")
 
-        // <span class="aztec">
+        // <span class="aztec"></span>
         let spanAttribute2 = Attribute(name: "class", value: .string("aztec"))
         let spanNode2 = ElementNode(type: .span, attributes: [spanAttribute2], children: [textNode])
 
-        // <span class="first"><span class="aztec">
+        // <span class="first"><span class="aztec"></span>
         let spanAttribute1 = Attribute(name: "class", value: .string("first"))
         let spanNode1 = ElementNode(type: .span, attributes: [spanAttribute1], children: [spanNode2])
 
-        // <h1><span class="first"><span class="aztec">
+        // <h1><span class="first"><span class="aztec"></span></span></h1>
         let headerNode = ElementNode(type: .h1, attributes: [], children: [spanNode1])
         let rootNode = RootNode(children: [headerNode])
 
@@ -107,7 +107,7 @@ class AttributedStringSerializerTests: XCTestCase {
         let attrString = attributedString(from: inNode)
 
         let outNode = AttributedStringParser().parse(attrString)
-        let outHtml = DefaultHTMLSerializer().serialize(outNode)
+        let outHtml = HTMLSerializer().serialize(outNode)
 
         XCTAssertEqual(outHtml, inHtml)
     }
@@ -118,13 +118,13 @@ class AttributedStringSerializerTests: XCTestCase {
     ///
     func testLineBreakTagWithinUnsupportedHTMLDoesNotCauseDataLoss() {
         let inHtml = "<span><br>Aztec, don't forget me!</span>"
-        let expectedHtml = "<p><span><br></span><span>Aztec, don't forget me!</span></p>"
+        let expectedHtml = "<p><span><br>Aztec, don't forget me!</span></p>"
 
         let inNode = HTMLParser().parse(inHtml)
         let attrString = attributedString(from: inNode)
 
         let outNode = AttributedStringParser().parse(attrString)
-        let outHtml = DefaultHTMLSerializer().serialize(outNode)
+        let outHtml = HTMLSerializer().serialize(outNode)
 
         XCTAssertEqual(outHtml, expectedHtml)
     }
@@ -146,7 +146,7 @@ class AttributedStringSerializerTests: XCTestCase {
         let attrString = attributedString(from: inNode)
 
         let outNode = AttributedStringParser().parse(attrString)
-        let outHtml = DefaultHTMLSerializer().serialize(outNode)
+        let outHtml = HTMLSerializer().serialize(outNode)
 
         XCTAssertEqual(outHtml, inHtml)
     }
@@ -154,15 +154,50 @@ class AttributedStringSerializerTests: XCTestCase {
     /// Verifies that a linked image is properly converted from HTML to attributed string and back to HTML.
     ///
     func testLinkedImageGetsProperlyEncodedAndDecoded() {
-        let inHtml = "<p><a href=\"https://wordpress.com\"><img src=\"https://s.w.org/about/images/wordpress-logo-notext-bg.png\"></a></p>"
+        let inHtml = "<p><a href=\"https://wordpress.com\" class=\"alignnone\"><img src=\"https://s.w.org/about/images/wordpress-logo-notext-bg.png\" class=\"alignnone\"></a></p>"
         
         let inNode = HTMLParser().parse(inHtml)
         let attrString = attributedString(from: inNode)
         
         let outNode = AttributedStringParser().parse(attrString)
-        let outHtml = DefaultHTMLSerializer().serialize(outNode)
+        let outHtml = HTMLSerializer().serialize(outNode)
         
         XCTAssertEqual(outHtml, inHtml)
+    }
+
+
+    /// Verifies that Figure + Figcaption entities are properly mapped within an Image's caption field.
+    ///
+    /// - Input: <figure><img src="."><figcaption><h1>I'm a caption!</h1></figcaption></figure>
+    ///
+    /// - Output: Expected to he a single ImageAttachment, with it's `.caption` field properly set (and it's contents in h1 format).
+    ///
+    func testFigcaptionElementGetsProperlySerializedIntoImageAttachmentCaptionField() {
+        // <figcaption><h1>I'm a caption!</h1></figcaption>
+        let figcaptionTextNode = TextNode(text: "I'm a caption!")
+        let figcaptionH1Node = ElementNode(type: .h1, attributes: [], children: [figcaptionTextNode])
+        let figcaptionMainNode = ElementNode(type: .figcaption, attributes: [], children: [figcaptionH1Node])
+
+        // <figure><img/><figcaption/></figure>
+        let imageNode = ElementNode(type: .img, attributes: [], children: [])
+        let figureNode = ElementNode(type: .figure, attributes: [], children: [imageNode, figcaptionMainNode])
+
+        // Convert
+        let rootNode = RootNode(children: [figureNode])
+        let output = attributedString(from: rootNode)
+        
+        guard let imageAttachment = output.attribute(.attachment, at: 0, effectiveRange: nil) as? ImageAttachment else {
+            XCTFail()
+            return
+        }
+    
+        guard let caption = output.caption(for: imageAttachment) else {
+            XCTFail()
+            return
+        }
+
+        let formatter = HeaderFormatter(headerLevel: .h1, placeholderAttributes: [:])
+        XCTAssertTrue(formatter.present(in: caption, at: 0))
     }
 }
 
@@ -175,8 +210,8 @@ extension AttributedStringSerializerTests {
         let defaultAttributes: [NSAttributedStringKey: Any] = [.font: UIFont.systemFont(ofSize: 14),
                                                                .paragraphStyle: ParagraphStyle.default]
         
-        let serializer = AttributedStringSerializer(defaultAttributes: defaultAttributes)
+        let serializer = AttributedStringSerializer()
 
-        return serializer.serialize(node)
+        return serializer.serialize(node, defaultAttributes: defaultAttributes)
     }
 }

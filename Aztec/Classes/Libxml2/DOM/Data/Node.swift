@@ -25,7 +25,6 @@ public class Node: Equatable, CustomReflectable, Hashable {
         }
     }
 
-
     // MARK - Hashable
 
     public var hashValue: Int {
@@ -40,7 +39,7 @@ public class Node: Equatable, CustomReflectable, Hashable {
 
     // MARK: - DOM Queries
     
-    func hasAncestor(ofType type: StandardElementType) -> Bool {
+    func hasAncestor(ofType type: Element) -> Bool {
         var ancestor: ElementNode? = parent
         
         while let currentAncestor = ancestor {
@@ -53,9 +52,19 @@ public class Node: Equatable, CustomReflectable, Hashable {
         
         return false
     }
+    
+    /// Checks if the specified node requires a closing paragraph separator.
+    ///
+    func needsClosingParagraphSeparator() -> Bool {
+        guard !hasRightBlockLevelSibling() else {
+            return true
+        }
+        
+        return !isLastInTree() && isLastInAncestorEndingInBlockLevelSeparation()
+    }
 
     func isLastIn(blockLevelElement element: ElementNode) -> Bool {
-        return element.isBlockLevelElement() && element.children.last === self
+        return element.isBlockLevel() && element.children.last === self
     }
 
     /// Checks if the receiver is the last node in its parent.
@@ -108,11 +117,11 @@ public class Node: Equatable, CustomReflectable, Hashable {
         }
 
         return isLastInParent() &&
-            (parent.isBlockLevelElement() || parent.isLastInBlockLevelAncestor())
+            (parent.isBlockLevel() || parent.isLastInBlockLevelAncestor())
     }
 
     func hasRightBlockLevelSibling() -> Bool {
-        if let rightSibling = rightSibling() as? ElementNode, rightSibling.isBlockLevelElement() {
+        if let rightSibling = rightSibling() as? ElementNode, rightSibling.isBlockLevel() {
             return true
         } else {
             return false
@@ -124,8 +133,24 @@ public class Node: Equatable, CustomReflectable, Hashable {
             return false
         }
 
-        return parent.children.last === self
-            && (parent.isBlockLevelElement()
+        let lastIndexResult = parent.children.lastIndex { (node) -> Bool in
+            if node is ElementNode {
+                return true
+            } else if let textNode = node as? TextNode {
+                return textNode.length() > 0
+            } else if node is CommentNode {
+                return true
+            }
+
+            return false
+        }
+
+        guard let lastChildIndex = lastIndexResult else {
+            return false
+        }
+
+        return parent.children[lastChildIndex] === self
+            && (parent.isBlockLevel()
                 || parent.hasRightBlockLevelSibling()
                 || parent.isLastInAncestorEndingInBlockLevelSeparation())
     }
@@ -167,5 +192,11 @@ public class Node: Equatable, CustomReflectable, Hashable {
         }
 
         return lhs.isEqual(rhs)
+    }
+    
+    // MARK: - Raw text representation of nodes
+    
+    public func rawText() -> String {
+        return ""
     }
 }
