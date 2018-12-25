@@ -1174,16 +1174,16 @@ open class TextView: UITextView {
     private func preserveTypingAttributesForDeletion(block: () -> Void) {
         
         // We really don't want this code running below iOS 10.
-        guard #available(iOS 11, *) else {
-            block()
-            return
-        }
-        
-//        let document = textStorage.string
-//        guard selectedRange.location == document.count, document.count > 0 else {
+//        guard #available(iOS 11, *) else {
 //            block()
 //            return
 //        }
+
+        let document = textStorage.string
+        guard selectedRange.location < document.count, document.count > 0 else {
+            block()
+            return
+        }
 
         let previousLocation = max(selectedRange.location - 1, 0)
         let previousAttributes = textStorage.attributes(at: previousLocation, effectiveRange: nil)
