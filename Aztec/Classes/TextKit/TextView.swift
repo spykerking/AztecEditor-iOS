@@ -1146,10 +1146,10 @@ open class TextView: UITextView {
     private func preserveTypingAttributesForInsertion(block: () -> Void) {
         
         // We really don't want this code running below iOS 10.
-        guard #available(iOS 11, *) else {
-            block()
-            return
-        }
+//        guard #available(iOS 11, *) else {
+//            block()
+//            return
+//        }
         
         let beforeTypingAttributes = typingAttributes
         let beforeDelegate = delegate
