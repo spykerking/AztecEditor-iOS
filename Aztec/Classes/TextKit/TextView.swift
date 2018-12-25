@@ -1179,11 +1179,11 @@ open class TextView: UITextView {
 //            return
 //        }
 
-        let document = textStorage.string
-        guard selectedRange.location < document.count, document.count > 0 else {
-            block()
-            return
-        }
+//        let document = textStorage.string
+//        guard selectedRange.location == document.count, document.count > 0 else {
+//            block()
+//            return
+//        }
 
         let previousLocation = max(selectedRange.location - 1, 0)
         let previousAttributes = textStorage.attributes(at: previousLocation, effectiveRange: nil)
