@@ -1185,6 +1185,11 @@ open class TextView: UITextView {
 //            return
 //        }
 
+        guard selectedRange.location > 0 else {
+            block()
+            return
+        }
+
         let previousLocation = max(selectedRange.location - 1, 0)
         let previousAttributes = textStorage.attributes(at: previousLocation, effectiveRange: nil)
 
