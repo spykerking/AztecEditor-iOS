@@ -38,6 +38,10 @@ open class HeaderFormatter: ParagraphAttributeFormatter {
         let defaultSize = defaultFontSize(from: attributes)
         let header = Header(level: headerLevel, with: representation, defaultFontSize: defaultSize)
         if newParagraphStyle.headers.isEmpty {
+            if !newParagraphStyle.htmlParagraph.isEmpty {
+                newParagraphStyle.removeProperty(ofType: HTMLParagraph.self)
+            }
+
             newParagraphStyle.appendProperty(header)
         } else {
             newParagraphStyle.replaceProperty(ofType: Header.self, with: header)
