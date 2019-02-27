@@ -253,7 +253,7 @@ private extension AttributedStringSerializer {
         } else if element.name == StandardElementType.li.rawValue {
             // ^ Since LI is handled by the OL and UL formatters, we can safely ignore it here.
             finalAttributes = inheritedAttributes
-        } else {
+        } else if element.name != StandardElementType.br.rawValue {
             finalAttributes = self.attributes(storing: elementRepresentation, in: finalAttributes)
         }
 
