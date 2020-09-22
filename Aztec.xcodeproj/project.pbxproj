@@ -166,13 +166,6 @@
 			remoteGlobalIDString = 5951CB8D1D8BC93600E1866F;
 			remoteInfo = Aztec;
 		};
-		E8CE3F041F213AD0003254AB /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 5951CB851D8BC93600E1866F /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = E8CE3EFE1F213AAA003254AB;
-			remoteInfo = "Carthage Update";
-		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -884,7 +877,6 @@
 			buildRules = (
 			);
 			dependencies = (
-				E8CE3F051F213AD0003254AB /* PBXTargetDependency */,
 			);
 			name = Aztec;
 			productName = Aztec;
@@ -1142,11 +1134,6 @@
 			isa = PBXTargetDependency;
 			target = 5951CB8D1D8BC93600E1866F /* Aztec */;
 			targetProxy = 5951CB991D8BC93600E1866F /* PBXContainerItemProxy */;
-		};
-		E8CE3F051F213AD0003254AB /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = E8CE3EFE1F213AAA003254AB /* Carthage Update */;
-			targetProxy = E8CE3F041F213AD0003254AB /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
